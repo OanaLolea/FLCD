@@ -1,0 +1,139 @@
+
+
+
+%option noyywrap
+
+%{
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#undef yywrap
+#define yywrap() 1
+
+
+typedef struct {
+    char key[30];
+    int value;
+} _pif;
+
+typedef struct {
+    int key;
+    char value[30];
+}_symbolTable;
+
+
+int pifLength = 0;
+int stLength = 0;
+
+_pif PIF[100];
+_symbolTable symbolTable[100];
+
+
+int findInST(char value[]){
+	for(int i=0;i<stLength;i++)
+        if(strcmp(symbolTable[i].value, value)==0){
+            return symbolTable[i].key;
+        }
+    return -1;
+}
+
+int addToSt(char value[]) {
+    if(findInST(value)==-1){
+        _symbolTable st;
+        st.key=stLength; 
+        strcpy(st.value,value);
+        symbolTable[stLength]=st;
+        stLength=stLength+1;
+        return stLength-1;
+    }
+    return -1;
+}
+
+void addIdentifierInPIF(char key[], int poz){
+    if(poz!=-1){
+        _pif p;
+        strcpy(p.key, key);
+        p.value=poz;
+        PIF[pifLength]=p;
+        pifLength++;
+    }
+}
+
+void addConstantInPIF(char key[]){
+    _pif p;
+    strcpy(p.key,key);
+    p.value=1;
+    PIF[pifLength]=p;
+    pifLength++;
+}
+
+void addElementInPIF(char key[]){
+	_pif p;
+    strcpy(p.key, key);
+    p.value=-1;
+    PIF[pifLength]=p;
+    pifLength++;
+
+}
+
+void printAll() {
+
+    printf("PIF:\n");
+    for(int i=0;i<pifLength;i++)
+        printf("Code: %s and position in ST: %d\n", PIF[i].key, PIF[i].value);
+
+    printf("\nSymbol table:\n");
+    for(int i=0;i<stLength;i++)
+        printf("Identifier: %s and position: %d\n", symbolTable[i].value, symbolTable[i].key);
+}
+%}
+
+NZDIGIT 	[1-9]
+DIGIT 		[0-9]
+POSITIVE_INT ([1-9][0-9]*)|0
+IDENTIFIER [a-zA-Z][a-zA-Z_]*[0-9]*
+
+%%
+{DIGIT}+"."{DIGIT}*  addConstantInPIF(yytext);
+
+"if"  addElementInPIF(yytext);
+"then"  addElementInPIF(yytext);
+"else"  addElementInPIF(yytext);
+"while"  addElementInPIF(yytext);
+"for"  addElementInPIF(yytext);
+"integer"  addElementInPIF(yytext);
+"boolean"  addElementInPIF(yytext);
+"do"  addElementInPIF(yytext);
+"char"  addElementInPIF(yytext);
+"read"  addElementInPIF(yytext);
+"write"  addElementInPIF(yytext);
+"program"  addElementInPIF(yytext);
+"var"  addElementInPIF(yytext);
+"array"  addElementInPIF(yytext);
+
+{IDENTIFIER} { int p = addToSt(yytext); addIdentifierInPIF(yytext, p);};
+{POSITIVE_INT} {int p = addToSt(yytext); addIdentifierInPIF(yytext, p);};
+
+"+"|"-"|"/"|"*"|"%"|">"|"<"|">="|"<="|"::="|"<>"|"="|"("|")"|"["|"]"|"{"|"}"|";"|"." addElementInPIF(yytext);
+
+
+[ \t\n] ; 		/* eat up whitespace */
+"{"[^}\n]*"}" 		/* eat up one-line comments */ 
+
+%%
+int main( argc, argv )
+int argc;
+char **argv;
+{
+    ++argv, --argc; /* skip over program name */
+
+    if ( argc > 0 ) {
+    	yyin = fopen( argv[0], "r" );
+    } else {
+     	yyin = stdin;
+    }
+
+    yylex();
+    printAll();
+	return 0;
+}
